@@ -19,6 +19,9 @@ public static class AdsCancellationTests
         ScopeHoldMode();
         ScopeOtherInputs();
         ScopePreview();
+        SprintCancellation();
+        SprintBoundaries();
+        SprintOtherStates();
         HoldMode();
         FocusAndPreview();
         OtherStates();
@@ -208,6 +211,125 @@ public static class AdsCancellationTests
         }
     }
 
+    /// <summary>前进加 Shift 刚成立时取消开镜，覆盖按键顺序和左右 Shift。</summary>
+    private static void SprintCancellation()
+    {
+        foreach (int shift in new int[] { 16, 160, 161 })
+        foreach (int first in new int[] { 0, 87, shift })
+        {
+            Harness h = new Harness();
+            h.Press(2);
+            if (first != 0) h.Step(first);
+            h.Visible(false, "单按前进或 Shift 不取消开镜");
+            h.Step(87, shift);
+            h.Visible(true, "奔跑后显示准心：" + shift + "/" + first);
+            h.Step(87, shift);
+            h.Visible(true, "持续奔跑保持未开镜");
+            h.Step();
+            h.Visible(true, "停止奔跑不会恢复旧开镜记录");
+            h.Press(2);
+            h.Visible(false, "奔跑后再次右键正常开镜");
+            h.Step(87, shift);
+            h.Visible(true, "下一次奔跑仍能取消开镜");
+            h.Step(87, shift, 2);
+            h.Visible(false, "组合一直按住时允许新的右键开镜");
+            h.Step(87, shift, 2);
+            h.Visible(false, "持续组合不会反复清掉新的开镜记录");
+            h.Step(87, shift);
+            h.Step(87, shift, 2);
+            h.Visible(true, "组合按住期间右键仍能正常关镜");
+        }
+    }
+
+    /// <summary>取消优先，并沿用前进改键、相反方向处理和按住开镜的规则。</summary>
+    private static void SprintBoundaries()
+    {
+        Harness h = new Harness();
+        h.Step(87, 16, 2);
+        h.Visible(true, "奔跑与开镜同帧时取消优先");
+        h.Step(2);
+        h.Visible(true, "奔跑后右键仍按住不会补触发开镜");
+        h.Step();
+        h.Press(2);
+        h.Visible(false, "松开再按右键可以重新开镜");
+
+        h = new Harness();
+        h.Config.Keys.Forward = 70;
+        h.Config.Keys.CancelAdsKeys = new int[0];
+        h.Press(2);
+        h.Step(87, 16);
+        h.Visible(false, "前进改键后 W 不再触发奔跑取消");
+        h.Step(70, 16);
+        h.Visible(true, "自定义前进键生效，且不依赖取消键列表");
+
+        h = new Harness();
+        h.Press(2);
+        h.Step(87);
+        h.Step(87, 83, 16);
+        h.Visible(false, "后按后退时不把仍按住的 W 误认为前进");
+        h.Step(87, 16);
+        h.Visible(true, "松开后退恢复前进时可以触发奔跑取消");
+
+        h = new Harness();
+        h.Config.AdsMode = "hold";
+        h.Step(2);
+        h.Step(2, 87, 16);
+        h.Visible(false, "按住开镜模式仍由开镜键决定显隐");
+        h.Step(87, 16);
+        h.Visible(true, "按住模式松开开镜键正常显示");
+    }
+
+    /// <summary>奔跑同步遵守前台、预览、运动、自由视角和出现渐变规则。</summary>
+    private static void SprintOtherStates()
+    {
+        Harness h = new Harness();
+        h.Config.OnlyWhenGameFocused = true;
+        h.Press(2);
+        h.Engine.GameFocused = false;
+        h.Engine.OwnForeground = true;
+        h.Step(87, 16);
+        h.Engine.GameFocused = true;
+        h.Step();
+        h.Visible(false, "其他窗口的前进加 Shift 不取消开镜");
+        h.Step(87, 16);
+        h.Visible(true, "回到游戏后奔跑取消生效");
+
+        h = new Harness();
+        h.Press(2);
+        h.Preview = PreviewMode.Static;
+        h.Step(87, 16);
+        h.Visible(true, "预览中的前进加 Shift 不影响预览显示");
+        h.Preview = PreviewMode.Live;
+        h.Step(87, 16);
+        h.Visible(false, "返回实时时不把已按住的组合认成新按下");
+        h.Step();
+        h.Step(87, 16);
+        h.Visible(true, "返回实时后重新奔跑可以取消开镜");
+
+        h = new Harness();
+        h.Press(2);
+        h.Step(87, 16, 5, 6, 81, 32);
+        double jumpMs = h.Engine.JumpMs;
+        h.Visible(true, "奔跑取消后正常显示");
+        Check(h.Engine.LiveSwitched && h.Engine.Boosted && h.Engine.LeanTarget == -1,
+            "奔跑取消不重置换手、强化准星和侧身");
+        h.Step(87, 16, 81);
+        Check(h.Engine.CurrentDir == 0 && h.Engine.Jumping && h.Engine.JumpMs > jumpMs,
+            "奔跑取消不打断前进或重启跳跃计时");
+
+        h = new Harness();
+        h.Press(2);
+        h.Step(87, 16, 4);
+        h.Visible(false, "奔跑取消后自由视角仍优先隐藏");
+        h.Step(87, 16);
+        h.Visible(true, "松开自由视角后显示");
+        h = new Harness();
+        h.Press(2);
+        h.Config.ShowFadeMs = 50;
+        h.Step(87, 16);
+        Check(Math.Abs(h.Engine.Alpha - 0.32) < 0.000001, "奔跑取消沿用出现渐变");
+    }
+
     /// <summary>按住开镜的显隐由开镜键本身决定，取消键不改变其行为。</summary>
     private static void HoldMode()
     {
@@ -324,9 +446,10 @@ public static class AdsCancellationTests
                 Profile, Config, Preview, 1.0);
         }
 
-        /// <summary>模拟 GetAsyncKeyState：通用 Alt/Ctrl 查询同时包含左右两侧按键。</summary>
+        /// <summary>模拟 GetAsyncKeyState：通用 Shift/Alt/Ctrl 查询同时包含左右两侧按键。</summary>
         private bool IsDown(int key)
         {
+            if (key == 16) return pressed.Contains(16) || pressed.Contains(160) || pressed.Contains(161);
             if (key == 18) return pressed.Contains(18) || pressed.Contains(164) || pressed.Contains(165);
             if (key == 17) return pressed.Contains(17) || pressed.Contains(162) || pressed.Contains(163);
             return pressed.Contains(key);

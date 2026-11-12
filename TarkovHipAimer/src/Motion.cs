@@ -42,6 +42,8 @@ namespace TarkovCrosshair
     public struct InputState
     {
         public bool Fwd, Back, Left, Right, LeanL, LeanR, Fire, Ads;
+        /// <summary>当前按住 Shift，结合有效前进输入判断奔跑开始。</summary>
+        public bool ShiftHeld;
         /// <summary>右键同时按住 Alt/Ctrl，表示切倍率或切瞄具，不作为新的开镜操作。</summary>
         public bool AdsScopeSwitch;
         /// <summary>自由视角 (hide while held).</summary>
@@ -200,6 +202,8 @@ namespace TarkovCrosshair
             i.Fwd = isDown(k.Forward); i.Back = isDown(k.Back); i.Left = isDown(k.Left); i.Right = isDown(k.Right);
             i.LeanL = isDown(k.LeanLeft); i.LeanR = isDown(k.LeanRight);
             i.Fire = isDown(k.Fire); i.Ads = isDown(k.Ads); i.FreeLook = isDown(k.FreeLook);
+            // 通用 Shift 键码包含左右两侧；单独按 Shift 不代表奔跑。
+            i.ShiftHeld = isDown(0x10);
             // 通用 Alt/Ctrl 键码包含左右两侧；仅右键开镜需要排除默认瞄具组合键。
             i.AdsScopeSwitch = k.Ads == 2 && i.Ads && (isDown(0x12) || isDown(0x11));
             i.HandSwitch = isDown(k.HandSwitch);

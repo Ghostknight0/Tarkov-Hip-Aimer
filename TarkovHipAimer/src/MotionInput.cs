@@ -1,4 +1,4 @@
-// 用途：记录取消开镜按键，排除切瞄具组合键并维护开镜状态。
+// 用途：记录取消开镜按键和奔跑输入，排除切瞄具组合键并维护开镜状态。
 namespace TarkovCrosshair
 {
     /// <summary>用四个整数保存按键状态，避免高帧率下每帧创建数组或集合。</summary>
@@ -44,13 +44,15 @@ namespace TarkovCrosshair
             prevPhysicalAds = input.Ads;
         }
 
-        /// <summary>切瞄具不算开镜；取消键优先，普通右键仍按所选开镜方式处理。</summary>
+        /// <summary>切瞄具不算开镜；取消键和奔跑开始优先，普通右键按所选方式处理。</summary>
         private bool UpdateAds(InputState input, GlobalSettings g, bool preview)
         {
             if (g.AdsMode == "toggle")
             {
+                // 前进与 Shift 刚组成组合时才取消，持续按住仍允许新的开镜操作。
+                bool sprintStarted = input.Fwd && input.ShiftHeld && !(prev.Fwd && prev.ShiftHeld);
                 // 只清零开镜记录，不重置换手、强化准星或运动状态。
-                if (input.CancelAds.HasNewPress(prev.CancelAds)) adsToggled = false;
+                if (sprintStarted || input.CancelAds.HasNewPress(prev.CancelAds)) adsToggled = false;
                 else if (input.Ads && !prev.Ads && !adsScopeSwitchHeld) adsToggled = !adsToggled;
                 return !preview && adsToggled;
             }
