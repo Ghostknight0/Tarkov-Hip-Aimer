@@ -8,6 +8,8 @@ $sourcePaths = @(Get-ChildItem -LiteralPath (Join-Path $repoPath 'TarkovHipAimer
 Add-Type -Path ($sourcePaths + @(
     (Join-Path $PSScriptRoot 'AdsCancellationTests.cs'),
     (Join-Path $PSScriptRoot 'AdsActionTests.cs'),
+    (Join-Path $PSScriptRoot 'WeaponAdsTests.cs'),
+    (Join-Path $PSScriptRoot 'SprintOrderTests.cs'),
     (Join-Path $PSScriptRoot 'MagazineCheckSettingsTests.cs'),
     (Join-Path $PSScriptRoot 'SettingsCancellationTests.cs')))
 $pressed = [System.Collections.Generic.HashSet[int]]::new()
@@ -40,3 +42,7 @@ $actionChecks = [AdsActionTests]::Run()
 'PASS：弹匣检查与盲射 {0} 项' -f $actionChecks
 $magazineSettingsChecks = [MagazineCheckSettingsTests]::Run()
 'PASS：检查弹匣配置保存与兼容 {0} 项' -f $magazineSettingsChecks
+$weaponChecks = [WeaponAdsTests]::Run()
+'PASS：切枪、拔刀与投雷 {0} 项' -f $weaponChecks
+$sprintChecks = [SprintOrderTests]::Run()
+'PASS：屏息与前进按键顺序 {0} 项' -f $sprintChecks

@@ -50,6 +50,12 @@ namespace TarkovCrosshair
         public bool MagazineCheck;
         /// <summary>左 Alt+W/S 的真实盲射输入，不受相反方向过滤影响。</summary>
         public bool BlindFire;
+        /// <summary>数字 1/2/3 分别占一位，保留每个切枪键的按下事件。</summary>
+        public byte WeaponSlots;
+        /// <summary>默认 U 拔刀、G 拿雷的真实按键。</summary>
+        public bool DrawKnife, DrawGrenade;
+        /// <summary>鼠标左右键分别占一位，用于识别拿雷后的投掷和松开。</summary>
+        public byte ThrowButtons;
         /// <summary>自由视角 (hide while held).</summary>
         public bool FreeLook;
         /// <summary>换手 key (v2.4).</summary>
@@ -157,6 +163,7 @@ namespace TarkovCrosshair
             adsScopeSwitchHeld = false;
             prevPhysicalAds = false;
             magazineCheckRemaining = 0; prevMagazineCheck = false;
+            ResetWeaponInput();
             recoil = 0;
             prev = new InputState();
             prevPreview = false;
@@ -215,6 +222,7 @@ namespace TarkovCrosshair
                 KeyChord.IsDown(k.MagazineCheckKey, k.MagazineCheckModifiers, isDown);
             // 游戏盲射默认绑定左 Alt+W/S，独立于工具的移动按键设置。
             i.BlindFire = isDown(0xA4) && (isDown(0x57) || isDown(0x53));
+            ReadWeaponInput(ref i, k, isDown);
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
@@ -340,6 +348,7 @@ namespace TarkovCrosshair
             if (!FocusGate.KeysLive(g.OnlyWhenGameFocused, GameFocused)) input = new InputState();
             // 检查保护按真实经过时间倒数，不受运动时间限幅或预览速度影响。
             UpdateMagazineCheck(input, g, preview, dt);
+            UpdateWeaponInput(input, g, preview, dt);
             // 组合键按真实输入记录，预览只替换后续的位置和显隐演示输入。
             UpdateAdsKey(input);
             bool realHandKey = input.HandSwitch;

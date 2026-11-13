@@ -65,11 +65,11 @@ namespace TarkovCrosshair
         {
             if (g.AdsMode == "toggle")
             {
-                // 前进与 Shift 刚组成组合时才取消，持续按住仍允许新的开镜操作。
-                bool sprintStarted = input.Fwd && input.ShiftHeld && !(prev.Fwd && prev.ShiftHeld);
+                // 仅在有效前进时新按下 Shift 才取消；先屏息再前进不算奔跑开始。
+                bool sprintStarted = input.Fwd && input.ShiftHeld && !prev.ShiftHeld;
                 // 只清零开镜记录，不重置换手、强化准星或运动状态。
-                // 检查期间和盲射按住期间持续保持未开镜，忽略游戏不会接受的点击。
-                if (magazineCheckRemaining > 0 || input.BlindFire || sprintStarted || input.CancelAds.HasNewPress(prev.CancelAds))
+                // 检查、切换武器、持刀持雷和盲射期间，忽略游戏不会接受的开镜点击。
+                if (magazineCheckRemaining > 0 || WeaponBlocksAds || input.BlindFire || sprintStarted || input.CancelAds.HasNewPress(prev.CancelAds))
                     adsToggled = false;
                 else if (input.Ads && !prev.Ads && !adsScopeSwitchHeld) adsToggled = !adsToggled;
                 return !preview && adsToggled;

@@ -211,11 +211,11 @@ public static class AdsCancellationTests
         }
     }
 
-    /// <summary>前进加 Shift 刚成立时取消开镜，覆盖按键顺序和左右 Shift。</summary>
+    /// <summary>前进时新按下 Shift 取消开镜，持续按住不反复清零。</summary>
     private static void SprintCancellation()
     {
         foreach (int shift in new int[] { 16, 160, 161 })
-        foreach (int first in new int[] { 0, 87, shift })
+        foreach (int first in new int[] { 0, 87 })
         {
             Harness h = new Harness();
             h.Press(2);
@@ -260,7 +260,10 @@ public static class AdsCancellationTests
         h.Step(87, 16);
         h.Visible(false, "前进改键后 W 不再触发奔跑取消");
         h.Step(70, 16);
-        h.Visible(true, "自定义前进键生效，且不依赖取消键列表");
+        h.Visible(false, "先按住 Shift 再按自定义前进键不取消开镜");
+        h.Step(70);
+        h.Step(70, 16);
+        h.Visible(true, "自定义前进时重新按 Shift 生效，且不依赖取消键列表");
 
         h = new Harness();
         h.Press(2);
@@ -268,7 +271,10 @@ public static class AdsCancellationTests
         h.Step(87, 83, 16);
         h.Visible(false, "后按后退时不把仍按住的 W 误认为前进");
         h.Step(87, 16);
-        h.Visible(true, "松开后退恢复前进时可以触发奔跑取消");
+        h.Visible(false, "Shift 已按住时松开后退恢复前进不取消开镜");
+        h.Step(87);
+        h.Step(87, 16);
+        h.Visible(true, "恢复前进后重新按 Shift 才触发奔跑取消");
 
         h = new Harness();
         h.Config.AdsMode = "hold";
