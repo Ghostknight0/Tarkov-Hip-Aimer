@@ -38,6 +38,11 @@ namespace TarkovCrosshair
         // 多个取消键用于对齐开镜记录；它们不会向游戏发送按键。
         [DataMember(Name = "CancelAdsKeys")] public int[] CancelAdsKeys;
 
+        // 检查弹匣使用一个主键及 Ctrl/Alt/Shift 组合；零秒表示关闭这项保护。
+        [DataMember(Name = "MagazineCheckKey")] public int MagazineCheckKey;
+        [DataMember(Name = "MagazineCheckModifiers")] public int MagazineCheckModifiers;
+        [DataMember(Name = "MagazineCheckBlockSeconds")] public double MagazineCheckBlockSeconds;
+
         public const int VkXButton1 = 0x05;
         public const int VkXButton2 = 0x06;
         public const int VkSpace = 0x20;
@@ -66,6 +71,9 @@ namespace TarkovCrosshair
             handSwitch = VkXButton1; HandSwitchPresent = true;
             boost = VkXButton2; BoostPresent = true;
             CancelAdsKeys = new int[] { 9, 27 }; // Tab、Esc 默认用于取消开镜。
+            MagazineCheckKey = 0x52; // 默认 Ctrl+R 检查弹匣。
+            MagazineCheckModifiers = KeyChord.Control;
+            MagazineCheckBlockSeconds = 3;
         }
 
         // 数组必须单独复制，避免 UI 改键影响渲染线程正在使用的配置。
@@ -142,6 +150,12 @@ namespace TarkovCrosshair
             boost = Vk(boost, d.Boost);
             BoostPresent = bp;
             CancelAdsKeys = NormalizeCancelAdsKeys(CancelAdsKeys);
+            if (MagazineCheckKey < 1 || MagazineCheckKey > 254 || KeyChord.IsModifier(MagazineCheckKey))
+                MagazineCheckKey = d.MagazineCheckKey;
+            if (MagazineCheckModifiers < 0 || MagazineCheckModifiers > KeyChord.AllModifiers)
+                MagazineCheckModifiers = d.MagazineCheckModifiers;
+            // 在配置加载时处理非法值，实时输入不重复校验或分配对象。
+            MagazineCheckBlockSeconds = Clamp.D(MagazineCheckBlockSeconds, 0, 30, 3);
         }
 
         // 只在设置校验时分配数组；实时读取直接使用结果，不在每帧做去重。
@@ -161,5 +175,29 @@ namespace TarkovCrosshair
 
         // 游戏动作键只接受有效的 Windows 虚拟键码，否则使用原有默认值。
         private static int Vk(int v, int def) { return (v >= 1 && v <= 254) ? v : def; }
+    }
+
+    /// <summary>匹配配置的组合键，不依赖窗口，也不注册全局按键钩子。</summary>
+    public static class KeyChord
+    {
+        // 各位分别表示需要按住的修饰键，允许 Ctrl、Alt、Shift 任意组合。
+        public const int Control = 1, Alt = 2, Shift = 4, AllModifiers = 7;
+
+        /// <summary>修饰键不能单独充当主键，以免按住 Ctrl 时不断误判检查动作。</summary>
+        public static bool IsModifier(int key)
+        {
+            return (key >= 0x10 && key <= 0x12) || (key >= 0xA0 && key <= 0xA5);
+        }
+
+        /// <summary>只接受完整匹配的组合，额外修饰键不会误触发另一个游戏动作。</summary>
+        public static bool IsDown(int key, int modifiers, Func<int, bool> isDown)
+        {
+            if (!isDown(key)) return false;
+            int actual = 0;
+            if (isDown(0x11)) actual |= Control;
+            if (isDown(0x12)) actual |= Alt;
+            if (isDown(0x10)) actual |= Shift;
+            return actual == modifiers;
+        }
     }
 }

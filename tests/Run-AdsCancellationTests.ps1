@@ -7,6 +7,8 @@ $sourcePaths = @(Get-ChildItem -LiteralPath (Join-Path $repoPath 'TarkovHipAimer
     ForEach-Object { $_.FullName })
 Add-Type -Path ($sourcePaths + @(
     (Join-Path $PSScriptRoot 'AdsCancellationTests.cs'),
+    (Join-Path $PSScriptRoot 'AdsActionTests.cs'),
+    (Join-Path $PSScriptRoot 'MagazineCheckSettingsTests.cs'),
     (Join-Path $PSScriptRoot 'SettingsCancellationTests.cs')))
 $pressed = [System.Collections.Generic.HashSet[int]]::new()
 $readKey = [System.Func[int,bool]]{ param([int]$vk) return $pressed.Contains($vk) }
@@ -34,3 +36,7 @@ if ($alphas[6] -ne 1 -or $alphas[7] -ne 0) {
 $inputChecks = [AdsCancellationTests]::Run()
 $settingsChecks = [SettingsCancellationTests]::Run()
 'PASS：输入到显隐 {0} 项，配置保存与兼容 {1} 项' -f $inputChecks, $settingsChecks
+$actionChecks = [AdsActionTests]::Run()
+'PASS：弹匣检查与盲射 {0} 项' -f $actionChecks
+$magazineSettingsChecks = [MagazineCheckSettingsTests]::Run()
+'PASS：检查弹匣配置保存与兼容 {0} 项' -f $magazineSettingsChecks

@@ -35,6 +35,22 @@ namespace TarkovCrosshair
         private bool adsScopeSwitchHeld;
         // 单独保留真实开镜键历史，设置预览的模拟输入不会打断一次实际按压。
         private bool prevPhysicalAds;
+        // 只记录一次检查的剩余秒数；长按组合不会延长计时。
+        private double magazineCheckRemaining;
+        private bool prevMagazineCheck;
+
+        /// <summary>检查弹匣从组合刚按下时计时，预览输入和其他窗口不会发起检查。</summary>
+        private void UpdateMagazineCheck(InputState input, GlobalSettings g, bool preview, double elapsed)
+        {
+            if (!System.Double.IsNaN(elapsed) && elapsed > 0)
+                magazineCheckRemaining = System.Math.Max(0, magazineCheckRemaining - elapsed);
+            if (magazineCheckRemaining < 1e-9) magazineCheckRemaining = 0;
+            if (g.AdsMode != "toggle" || g.Keys.MagazineCheckBlockSeconds <= 0)
+                magazineCheckRemaining = 0;
+            else if (!preview && input.MagazineCheck && !prevMagazineCheck)
+                magazineCheckRemaining = g.Keys.MagazineCheckBlockSeconds;
+            prevMagazineCheck = input.MagazineCheck;
+        }
 
         /// <summary>在替换预览输入前记录组合键，让返回实时时仍能识别整次右键按压。</summary>
         private void UpdateAdsKey(InputState input)
@@ -52,7 +68,9 @@ namespace TarkovCrosshair
                 // 前进与 Shift 刚组成组合时才取消，持续按住仍允许新的开镜操作。
                 bool sprintStarted = input.Fwd && input.ShiftHeld && !(prev.Fwd && prev.ShiftHeld);
                 // 只清零开镜记录，不重置换手、强化准星或运动状态。
-                if (sprintStarted || input.CancelAds.HasNewPress(prev.CancelAds)) adsToggled = false;
+                // 检查期间和盲射按住期间持续保持未开镜，忽略游戏不会接受的点击。
+                if (magazineCheckRemaining > 0 || input.BlindFire || sprintStarted || input.CancelAds.HasNewPress(prev.CancelAds))
+                    adsToggled = false;
                 else if (input.Ads && !prev.Ads && !adsScopeSwitchHeld) adsToggled = !adsToggled;
                 return !preview && adsToggled;
             }

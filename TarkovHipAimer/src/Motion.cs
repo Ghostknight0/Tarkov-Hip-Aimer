@@ -46,6 +46,10 @@ namespace TarkovCrosshair
         public bool ShiftHeld;
         /// <summary>右键同时按住 Alt/Ctrl，表示切倍率或切瞄具，不作为新的开镜操作。</summary>
         public bool AdsScopeSwitch;
+        /// <summary>配置的检查弹匣组合当前是否按住。</summary>
+        public bool MagazineCheck;
+        /// <summary>左 Alt+W/S 的真实盲射输入，不受相反方向过滤影响。</summary>
+        public bool BlindFire;
         /// <summary>自由视角 (hide while held).</summary>
         public bool FreeLook;
         /// <summary>换手 key (v2.4).</summary>
@@ -152,6 +156,7 @@ namespace TarkovCrosshair
             adsToggled = false;
             adsScopeSwitchHeld = false;
             prevPhysicalAds = false;
+            magazineCheckRemaining = 0; prevMagazineCheck = false;
             recoil = 0;
             prev = new InputState();
             prevPreview = false;
@@ -206,6 +211,10 @@ namespace TarkovCrosshair
             i.ShiftHeld = isDown(0x10);
             // 通用 Alt/Ctrl 键码包含左右两侧；仅右键开镜需要排除默认瞄具组合键。
             i.AdsScopeSwitch = k.Ads == 2 && i.Ads && (isDown(0x12) || isDown(0x11));
+            i.MagazineCheck = k.MagazineCheckBlockSeconds > 0 &&
+                KeyChord.IsDown(k.MagazineCheckKey, k.MagazineCheckModifiers, isDown);
+            // 游戏盲射默认绑定左 Alt+W/S，独立于工具的移动按键设置。
+            i.BlindFire = isDown(0xA4) && (isDown(0x57) || isDown(0x53));
             i.HandSwitch = isDown(k.HandSwitch);
             i.Jump = isDown(k.Jump);
             i.Boost = isDown(k.Boost);
@@ -329,6 +338,8 @@ namespace TarkovCrosshair
             if (pm != prevPm) { previewMs = 0; prevPm = pm; jumpOn = false; jumpT = 0; }
             // 开启前台限制时，其他窗口的输入不参与实时状态计算。
             if (!FocusGate.KeysLive(g.OnlyWhenGameFocused, GameFocused)) input = new InputState();
+            // 检查保护按真实经过时间倒数，不受运动时间限幅或预览速度影响。
+            UpdateMagazineCheck(input, g, preview, dt);
             // 组合键按真实输入记录，预览只替换后续的位置和显隐演示输入。
             UpdateAdsKey(input);
             bool realHandKey = input.HandSwitch;

@@ -1,4 +1,4 @@
-﻿// 用途：构建按键设置页，编辑并保存多个取消开镜键。
+﻿// 用途：构建按键设置页，编辑取消开镜键和检查弹匣保护。
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,6 +17,7 @@ namespace TarkovCrosshair
             Row(g, "开镜", KeyBtn(2), Line(Lbl("开镜方式"), Choice(new string[] { "按住", "点一下切换" }, new string[] { "hold", "toggle" },
                 delegate { return G.AdsMode; }, delegate(string v) { G.AdsMode = v; })));
             AddCancelAdsKeysRow(g);
+            AddMagazineCheckRow(g);
             Row(g, "自由视角（转头）", KeyBtn(3),
                 Check("按住时隐藏准星", delegate { return G.HideOnFreeLook; }, delegate(bool v) { G.HideOnFreeLook = v; }));
             CheckBox hsOn = Check("换手检测", delegate { return G.HandEnabled; }, delegate(bool v) { G.HandEnabled = v; });
@@ -76,6 +77,29 @@ namespace TarkovCrosshair
             });
             Row(grid, "取消开镜", edit, summary);
             Tip(edit, "仅用于点一下切换开镜。默认 Tab、Esc 清掉工具记录，不向游戏发送按键；背包内显隐不单独控制。");
+        }
+
+        /// <summary>在开镜设置旁配置检查弹匣，保存后沿用现有的配置发布和落盘流程。</summary>
+        private void AddMagazineCheckRow(TableLayoutPanel grid)
+        {
+            Label summary = Lbl("");
+            summary.Name = "magazineCheckSummary";
+            refreshers.Add(delegate { summary.Text = MagazineCheckForm.Describe(G.Keys); });
+            Button edit = Btn("配置检查保护…", delegate
+            {
+                using (MagazineCheckForm dialog = new MagazineCheckForm(G.Keys))
+                {
+                    if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                    G.Keys.MagazineCheckKey = dialog.SelectedKey;
+                    G.Keys.MagazineCheckModifiers = dialog.SelectedModifiers;
+                    G.Keys.MagazineCheckBlockSeconds = dialog.SelectedSeconds;
+                    app.Changed();
+                    RefreshValues();
+                }
+            });
+            edit.Name = "configureMagazineCheck";
+            Row(grid, "检查弹匣", edit, summary);
+            Tip(edit, "默认 Ctrl+R：立即显示瞄准点，并在 3 秒内忽略开镜点击。组合键、时长均可修改；0 秒关闭。仅用于点一下切换开镜。");
         }
     }
 }
